@@ -1,0 +1,50 @@
+server:
+  port: ${SERVER_PORT:8081}
+
+spring:
+  application:
+    name: iam-service
+  datasource:
+    url: ${IAM_DB_URL:jdbc:postgresql://localhost:5433/medibridge_iam}
+    username: ${IAM_DB_USERNAME:postgres}
+    password: ${IAM_DB_PASSWORD:12345678}
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:validate}
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: true
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:medibridge}
+    password: ${RABBITMQ_PASSWORD:medibridge}
+    listener:
+      simple:
+        retry:
+          enabled: true
+          initial-interval: 1000ms
+          max-attempts: 3
+          multiplier: 2
+          max-interval: 10000ms
+
+authorization:
+  jwt:
+    issuer: ${IAM_JWT_ISSUER:medibridge-iam}
+    key-id: ${IAM_JWT_KEY_ID:medibridge-iam-rsa-1}
+    expiration-days: ${IAM_JWT_EXPIRATION_DAYS:7}
+    private-key: ${IAM_JWT_PRIVATE_KEY:}
+    public-key: ${IAM_JWT_PUBLIC_KEY:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
