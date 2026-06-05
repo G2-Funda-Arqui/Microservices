@@ -1,10 +1,10 @@
-# Guia de despliegue: IAM + Profiles en Render y CloudAMQP
+# Guia de despliegue: IAM + Profiles en Render, Neon y CloudAMQP
 
 Esta guia despliega:
 
 - `iam-service` en Render.
 - `profiles-service` en Render.
-- PostgreSQL administrado en Render.
+- PostgreSQL administrado en Neon.
 - RabbitMQ administrado en CloudAMQP.
 
 ## 1. Arquitectura objetivo
@@ -15,14 +15,14 @@ Cliente / Swagger
    v
 iam-service en Render
    |
-   +--> Render PostgreSQL: medibridge_iam
+   +--> Neon PostgreSQL: medibridge_iam
    +--> CloudAMQP: publica user.registered
    |
    +--> expone JWK publico
 
 profiles-service en Render
    |
-   +--> Render PostgreSQL: medibridge_profiles
+   +--> Neon PostgreSQL: medibridge_profiles
    +--> CloudAMQP: eventos de profiles
    +--> llama a iam-service por REST/Feign
    +--> valida JWT usando JWK de iam-service
@@ -46,6 +46,7 @@ Render inyecta `PORT` automaticamente. Localmente puedes seguir usando `SERVER_P
 Necesitas:
 
 - Cuenta en Render.
+- Cuenta en Neon.
 - Cuenta en CloudAMQP.
 - Repositorio en GitHub con este proyecto.
 - Dockerfiles en:
@@ -89,45 +90,52 @@ RABBITMQ_VHOST
 
 Si CloudAMQP te da puerto TLS `5671`, puedes probar con ese puerto. Si hay problemas TLS, usa el puerto AMQP no TLS que indique tu dashboard, normalmente `5672`.
 
-## 5. Crear PostgreSQL en Render
+## 5. Crear PostgreSQL en Neon
 
-Recomendacion simple: crea dos bases PostgreSQL administradas, una para cada microservicio.
-
-### 5.1 Base para IAM
-
-Crea una PostgreSQL database en Render:
+Recomendacion simple: crea un proyecto Neon y dentro crea dos databases, una para cada microservicio:
 
 ```text
-Name: medibridge-iam-db
-Database: medibridge_iam
-User: generado por Render
+medibridge_iam
+medibridge_profiles
 ```
 
-Cuando Render la cree, copia:
+Tambien puedes crear dos proyectos Neon separados, pero para esta etapa un solo proyecto con dos databases es suficiente.
+
+### 5.1 Crear proyecto Neon
+
+1. Entra a Neon.
+2. Crea un proyecto PostgreSQL.
+3. Crea o usa un rol/usuario para la conexion.
+4. Crea las databases:
 
 ```text
-Internal Database URL
-External Database URL
-Username
-Password
-Database
-Host
-Port
+medibridge_iam
+medibridge_profiles
 ```
 
-Para los servicios desplegados en Render, usa la `Internal Database URL` si esta disponible.
+5. En `Connect`, copia el connection string.
 
-### 5.2 Base para Profiles
-
-Crea otra PostgreSQL database:
+Neon suele entregar una URL de este tipo:
 
 ```text
-Name: medibridge-profiles-db
-Database: medibridge_profiles
-User: generado por Render
+postgresql://USER:PASSWORD@HOST/medibridge_iam?sslmode=require
 ```
 
-Copia tambien su `Internal Database URL` o los datos separados.
+o:
+
+```text
+postgresql://USER:PASSWORD@HOST/medibridge_profiles?sslmode=require
+```
+
+### 5.2 Puerto en Neon
+
+Si el connection string de Neon no muestra puerto, usa manualmente:
+
+```text
+5432
+```
+
+PostgreSQL usa `5432` por defecto.
 
 ## 6. Desplegar iam-service en Render
 
@@ -158,6 +166,52 @@ Ejemplo:
 
 ```text
 IAM_DB_URL=jdbc:postgresql://dpg-xxxxx-a.oregon-postgres.render.com:5432/medibridge_iam
+```
+
+### 6.1.1 Como convertir la URL de Neon a variables Spring
+
+Neon te muestra datos parecidos a estos:
+
+```text
+Connection string: postgresql://neondb_owner:PASSWORD@ep-example.us-east-2.aws.neon.tech/medibridge_iam?sslmode=require
+Username: neondb_owner
+Password: PASSWORD
+Database: medibridge_iam
+Host: ep-example.us-east-2.aws.neon.tech
+```
+
+Para `iam-service`, NO pegues directamente el connection string de Neon en `IAM_DB_URL`, porque empieza con `postgresql://` y Spring Boot necesita `jdbc:postgresql://`.
+
+Tampoco pongas usuario y password dentro del JDBC URL.
+
+Incorrecto:
+
+```text
+IAM_DB_URL=postgresql://neondb_owner:PASSWORD@ep-example.us-east-2.aws.neon.tech/medibridge_iam?sslmode=require
+IAM_DB_URL=jdbc:postgresql://neondb_owner:PASSWORD@ep-example.us-east-2.aws.neon.tech/medibridge_iam?sslmode=require
+IAM_DB_URL=jdbc:postgresql://@ep-example.us-east-2.aws.neon.tech/medibridge_iam?sslmode=require
+```
+
+Correcto:
+
+```text
+IAM_DB_URL=jdbc:postgresql://ep-example.us-east-2.aws.neon.tech:5432/medibridge_iam?sslmode=require
+IAM_DB_USERNAME=neondb_owner
+IAM_DB_PASSWORD=PASSWORD
+```
+
+Regla:
+
+```text
+IAM_DB_URL=jdbc:postgresql://HOST:PORT/DATABASE
+IAM_DB_USERNAME=Username de Neon
+IAM_DB_PASSWORD=Password de Neon
+```
+
+Como Render se conecta a Neon desde fuera de Neon, conserva:
+
+```text
+?sslmode=require
 ```
 
 RabbitMQ:
@@ -253,6 +307,33 @@ PROFILES_DB_USERNAME=<PROFILES_DB_USER>
 PROFILES_DB_PASSWORD=<PROFILES_DB_PASSWORD>
 ```
 
+Para `profiles-service` aplica la misma regla que IAM.
+
+Si Neon te da:
+
+```text
+Connection string: postgresql://neondb_owner:PASSWORD@ep-example.us-east-2.aws.neon.tech/medibridge_profiles?sslmode=require
+Username: neondb_owner
+Password: PASSWORD
+Database: medibridge_profiles
+Host: ep-example.us-east-2.aws.neon.tech
+```
+
+Debes configurar:
+
+```text
+PROFILES_DB_URL=jdbc:postgresql://ep-example.us-east-2.aws.neon.tech:5432/medibridge_profiles?sslmode=require
+PROFILES_DB_USERNAME=neondb_owner
+PROFILES_DB_PASSWORD=PASSWORD
+```
+
+No configures:
+
+```text
+PROFILES_DB_URL=postgresql://neondb_owner:PASSWORD@ep-example.us-east-2.aws.neon.tech/medibridge_profiles?sslmode=require
+PROFILES_DB_URL=jdbc:postgresql://neondb_owner:PASSWORD@ep-example.us-east-2.aws.neon.tech/medibridge_profiles?sslmode=require
+```
+
 RabbitMQ:
 
 ```text
@@ -346,10 +427,9 @@ Usa este orden:
 
 ```text
 1. CloudAMQP
-2. Render PostgreSQL IAM
-3. Render PostgreSQL Profiles
-4. iam-service
-5. profiles-service
+2. Neon PostgreSQL con databases `medibridge_iam` y `medibridge_profiles`
+3. iam-service
+4. profiles-service
 ```
 
 Profiles depende de IAM para:
@@ -402,6 +482,35 @@ jdbc:postgresql://host:port/database
 
 No pegues directamente una URL `postgres://...` en `IAM_DB_URL` o `PROFILES_DB_URL`, porque Spring JDBC espera formato `jdbc:postgresql://...`.
 
+Tampoco incluyas usuario y password dentro de `IAM_DB_URL` o `PROFILES_DB_URL`.
+
+Si ves este error:
+
+```text
+JDBC URL invalid port number
+Driver org.postgresql.Driver claims to not accept jdbcUrl
+```
+
+probablemente configuraste algo como:
+
+```text
+jdbc:postgresql://USER:PASSWORD@HOST/DATABASE
+```
+
+La forma correcta es:
+
+```text
+SERVICE_DB_URL=jdbc:postgresql://HOST:5432/DATABASE
+SERVICE_DB_USERNAME=USER
+SERVICE_DB_PASSWORD=PASSWORD
+```
+
+Con Neon, normalmente agrega `sslmode=require`:
+
+```text
+jdbc:postgresql://HOST:5432/DATABASE?sslmode=require
+```
+
 ### Error de RabbitMQ
 
 Verifica:
@@ -420,5 +529,6 @@ Si usas CloudAMQP, el vhost puede no ser `/`. Copialo exactamente desde el dashb
 
 - Render Docker: https://render.com/docs/docker
 - Render Web Services: https://render.com/docs/web-services
-- Render PostgreSQL: https://render.com/docs/postgresql
+- Neon conexion general: https://neon.com/docs/get-started-with-neon/connect-neon
+- Neon Java/JDBC: https://neon.com/docs/guides/java
 - CloudAMQP Docs: https://www.cloudamqp.com/docs/

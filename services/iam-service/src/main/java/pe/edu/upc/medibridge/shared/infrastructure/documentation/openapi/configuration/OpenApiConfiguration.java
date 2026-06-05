@@ -32,8 +32,8 @@ public class OpenApiConfiguration {
 
     private Info apiInfo() {
         return new Info()
-                .title("Goals Service API")
-                .description("REST API documentation for Goals Service")
+                .title("IAM-Service API")
+                .description("REST API documentation for IAM-Service")
                 .version("v1.0.0")
                 .license(new License()
                         .name("Apache 2.0")
