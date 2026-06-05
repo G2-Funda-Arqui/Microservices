@@ -1,5 +1,5 @@
 server:
-  port: ${SERVER_PORT:8081}
+  port: ${PORT:${SERVER_PORT:8081}}
 
 spring:
   application:
@@ -22,6 +22,7 @@ spring:
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USER:medibridge}
     password: ${RABBITMQ_PASSWORD:medibridge}
+    virtual-host: ${RABBITMQ_VHOST:/}
     listener:
       simple:
         retry:
