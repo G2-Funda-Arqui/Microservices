@@ -39,8 +39,8 @@ public class OpenApiConfiguration {
                         .name("Apache 2.0")
                         .url("https://www.apache.org/licenses/LICENSE-2.0"))
                 .contact(new Contact()
-                        .name("JameoFit Team")
-                        .url("https://github.com/G2-Aplicaciones-Moviles"));
+                        .name("VitalSync")
+                        .url("https://github.com/upc-pre-202601-si657-7944-VitalSync"));
     }
 
     private ExternalDocumentation externalDocs() {
