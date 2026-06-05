@@ -32,15 +32,15 @@ public class OpenApiConfiguration {
 
     private Info apiInfo() {
         return new Info()
-                .title("Goals Service API")
-                .description("REST API documentation for Goals Service")
+                .title("IAM-Service API")
+                .description("REST API documentation for IAM-Service")
                 .version("v1.0.0")
                 .license(new License()
                         .name("Apache 2.0")
                         .url("https://www.apache.org/licenses/LICENSE-2.0"))
                 .contact(new Contact()
-                        .name("JameoFit Team")
-                        .url("https://github.com/G2-Aplicaciones-Moviles"));
+                        .name("VitalSync")
+                        .url("https://github.com/upc-pre-202601-si657-7944-VitalSync"));
     }
 
     private ExternalDocumentation externalDocs() {

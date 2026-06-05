@@ -122,7 +122,7 @@ Si pgAdmin4 tambien corre en Docker, no uses `127.0.0.1` como host. En ese caso 
 medibridge-postgres
 ```
 
-## 4. Compilar iam-service
+## 4. Compilar iam-service con Maven
 
 Desde la raiz del proyecto:
 
@@ -136,7 +136,15 @@ Resultado esperado:
 BUILD SUCCESS
 ```
 
-## 5. Ejecutar iam-service
+Este paso sigue siendo util cuando ejecutas localmente con Maven. Si ejecutas con Docker, el Dockerfile multi-stage compila el `.jar` dentro de la imagen y no necesitas crear `target` antes.
+
+## 5. Ejecutar servicios localmente
+
+Tienes dos formas de ejecutar: Maven o Docker.
+
+### 5.1 Ejecutar con Maven
+
+Esta es la forma mas simple durante desarrollo.
 
 Con PostgreSQL y RabbitMQ ya corriendo:
 
@@ -144,13 +152,83 @@ Con PostgreSQL y RabbitMQ ya corriendo:
 .\mvnw.cmd -f services/iam-service/pom.xml spring-boot:run
 ```
 
-El servicio debe iniciar en:
+IAM debe iniciar en:
 
 ```text
 http://localhost:8081
 ```
 
+Para ejecutar `profiles-service`, abre otra terminal y usa:
+
+```powershell
+.\mvnw.cmd -f services/profiles-service/pom.xml spring-boot:run
+```
+
+Profiles debe iniciar en:
+
+```text
+http://localhost:8082
+```
+
 Si ves un warning sobre `IAM_JWT_PRIVATE_KEY/IAM_JWT_PUBLIC_KEY`, es esperado en desarrollo.
+
+### 5.2 Ejecutar con Docker
+
+Los Dockerfiles de `iam-service` y `profiles-service` son multi-stage. Eso significa que Docker descarga Maven, compila el proyecto dentro de la imagen y luego genera una imagen final liviana con Java 21.
+
+Primero asegúrate de que PostgreSQL y RabbitMQ esten levantados:
+
+```powershell
+docker compose -f docker/docker-compose.yml up -d
+```
+
+Construye la imagen de IAM:
+
+```powershell
+docker build -t medibridge/iam-service:local ./services/iam-service
+```
+
+Ejecuta IAM conectado a los contenedores de PostgreSQL y RabbitMQ:
+
+```powershell
+docker run --rm --name iam-service-local `
+  --network docker_default `
+  -p 8081:8081 `
+  -e IAM_DB_URL=jdbc:postgresql://medibridge-postgres:5432/medibridge_iam `
+  -e IAM_DB_USERNAME=postgres `
+  -e IAM_DB_PASSWORD=12345678 `
+  -e RABBITMQ_HOST=medibridge-rabbitmq `
+  -e RABBITMQ_PORT=5672 `
+  -e RABBITMQ_USER=medibridge `
+  -e RABBITMQ_PASSWORD=medibridge `
+  medibridge/iam-service:local
+```
+
+Para construir Profiles:
+
+```powershell
+docker build -t medibridge/profiles-service:local ./services/profiles-service
+```
+
+Para ejecutar Profiles, abre otra terminal:
+
+```powershell
+docker run --rm --name profiles-service-local `
+  --network docker_default `
+  -p 8082:8082 `
+  -e PROFILES_DB_URL=jdbc:postgresql://medibridge-postgres:5432/medibridge_profiles `
+  -e PROFILES_DB_USERNAME=postgres `
+  -e PROFILES_DB_PASSWORD=12345678 `
+  -e RABBITMQ_HOST=medibridge-rabbitmq `
+  -e RABBITMQ_PORT=5672 `
+  -e RABBITMQ_USER=medibridge `
+  -e RABBITMQ_PASSWORD=medibridge `
+  -e IAM_SERVICE_URL=http://iam-service-local:8081 `
+  -e IAM_JWK_SET_URI=http://iam-service-local:8081/api/v1/jwks/.well-known/jwks.json `
+  medibridge/profiles-service:local
+```
+
+Nota sobre puertos: desde Windows conectas a PostgreSQL por `localhost:5433`, pero entre contenedores se usa `medibridge-postgres:5432`, porque `5432` es el puerto interno del contenedor.
 
 ## 6. Pruebas HTTP basicas
 
