@@ -3,6 +3,7 @@ package pe.edu.upc.medibridge.appointments.application.internal.queryservices;
 import org.springframework.stereotype.Service;
 import pe.edu.upc.medibridge.appointments.domain.model.aggregates.Appointment;
 import pe.edu.upc.medibridge.appointments.domain.model.queries.GetAppointmentByIdQuery;
+import pe.edu.upc.medibridge.appointments.domain.model.queries.GetAppointmentsByPatientInPeriodQuery;
 import pe.edu.upc.medibridge.appointments.domain.model.queries.GetAppointmentsByPatientQuery;
 import pe.edu.upc.medibridge.appointments.domain.services.AppointmentQueryService;
 import pe.edu.upc.medibridge.appointments.infrastructure.persistence.jpa.repositories.AppointmentRepository;
@@ -27,5 +28,13 @@ public class AppointmentQueryServiceImpl implements AppointmentQueryService {
     @Override
     public List<Appointment> handle(GetAppointmentsByPatientQuery query) {
         return appointmentRepository.findByPatientIdOrderByStartsAtAsc(query.patientId());
+    }
+
+    @Override
+    public List<Appointment> handle(GetAppointmentsByPatientInPeriodQuery query) {
+        return appointmentRepository.findByPatientIdAndStartsAtBetweenOrderByStartsAtAsc(
+                query.patientId(),
+                query.startDate().atStartOfDay(),
+                query.endDate().plusDays(1).atStartOfDay());
     }
 }

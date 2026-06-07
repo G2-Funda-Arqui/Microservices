@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 import pe.edu.upc.medibridge.medicationmanagement.application.outboundservices.acl.ExternalPatientContextService;
 import pe.edu.upc.medibridge.medicationmanagement.domain.model.aggregates.MedicationSchedule;
 import pe.edu.upc.medibridge.medicationmanagement.domain.model.commands.CreateMedicationScheduleCommand;
+import pe.edu.upc.medibridge.medicationmanagement.domain.model.exceptions.InvalidPatientReferenceException;
 import pe.edu.upc.medibridge.medicationmanagement.domain.model.exceptions.MedicationNotFoundException;
 import pe.edu.upc.medibridge.medicationmanagement.domain.services.MedicationScheduleCommandService;
 import pe.edu.upc.medibridge.medicationmanagement.infrastructure.persistence.jpa.repositories.MedicationRepository;
@@ -29,7 +30,7 @@ public class MedicationScheduleCommandServiceImpl implements MedicationScheduleC
     @Override
     public Optional<MedicationSchedule> handle(CreateMedicationScheduleCommand command) {
         if (!externalPatientContextService.patientExists(command.patientId())) {
-            throw new IllegalArgumentException("Patient does not exist: " + command.patientId());
+            throw new InvalidPatientReferenceException(command.patientId());
         }
         medicationRepository.findById(command.medicationId())
                 .orElseThrow(() -> new MedicationNotFoundException(command.medicationId()));

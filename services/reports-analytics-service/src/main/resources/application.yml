@@ -1,0 +1,62 @@
+﻿server:
+  port: ${PORT:${SERVER_PORT:8087}}
+
+spring:
+  application:
+    name: reports-analytics-service
+  datasource:
+    url: ${REPORTS_DB_URL:jdbc:postgresql://localhost:5433/medibridge_reports}
+    username: ${REPORTS_DB_USERNAME:postgres}
+    password: ${REPORTS_DB_PASSWORD:12345678}
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:validate}
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: true
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:medibridge}
+    password: ${RABBITMQ_PASSWORD:medibridge}
+    virtual-host: ${RABBITMQ_VHOST:/}
+    listener:
+      simple:
+        retry:
+          enabled: true
+          initial-interval: 1000ms
+          max-attempts: 3
+          multiplier: 2
+          max-interval: 10000ms
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${IAM_JWK_SET_URI:http://localhost:8081/api/v1/jwks/.well-known/jwks.json}
+
+services:
+  profiles:
+    url: ${PROFILES_SERVICE_URL:http://localhost:8082}
+  appointments:
+    url: ${APPOINTMENTS_SERVICE_URL:http://localhost:8084}
+  healthmonitoring:
+    url: ${HEALTHMONITORING_SERVICE_URL:http://localhost:8085}
+  medication:
+    url: ${MEDICATION_SERVICE_URL:http://localhost:8086}
+
+reports:
+  pdf:
+    storage-path: ${REPORTS_PDF_STORAGE_PATH:reports}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html

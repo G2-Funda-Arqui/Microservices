@@ -23,6 +23,19 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     List<Appointment> findByPatientIdOrderByStartsAtAsc(@Param("patientId") Long patientId);
 
     @Query("""
+            select a
+            from Appointment a
+            where a.patientId = :patientId
+              and a.timeSlot.startsAt >= :startsAt
+              and a.timeSlot.startsAt < :endsAt
+            order by a.timeSlot.startsAt asc
+            """)
+    List<Appointment> findByPatientIdAndStartsAtBetweenOrderByStartsAtAsc(
+            @Param("patientId") Long patientId,
+            @Param("startsAt") LocalDateTime startsAt,
+            @Param("endsAt") LocalDateTime endsAt);
+
+    @Query("""
             select count(a) > 0
             from Appointment a
             where a.patientId = :patientId

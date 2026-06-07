@@ -9,6 +9,7 @@ import pe.edu.upc.medibridge.medicationmanagement.domain.model.entities.Medicati
 import pe.edu.upc.medibridge.medicationmanagement.domain.model.events.MedicationExpiredEvent;
 import pe.edu.upc.medibridge.medicationmanagement.domain.model.events.MedicationRegisteredEvent;
 import pe.edu.upc.medibridge.medicationmanagement.domain.model.events.StockCriticallyLowEvent;
+import pe.edu.upc.medibridge.medicationmanagement.domain.model.exceptions.InvalidPatientReferenceException;
 import pe.edu.upc.medibridge.medicationmanagement.domain.model.exceptions.MedicationNotFoundException;
 import pe.edu.upc.medibridge.medicationmanagement.domain.services.MedicationInventoryCommandService;
 import pe.edu.upc.medibridge.medicationmanagement.infrastructure.messaging.publishers.MedicationIntegrationEventPublisher;
@@ -37,7 +38,7 @@ public class MedicationInventoryCommandServiceImpl implements MedicationInventor
     @Override
     public Optional<Medication> handle(RegisterMedicationCommand command) {
         if (!externalPatientContextService.patientExists(command.patientId())) {
-            throw new IllegalArgumentException("Patient does not exist: " + command.patientId());
+            throw new InvalidPatientReferenceException(command.patientId());
         }
         var medication = medicationRepository.save(new Medication(command));
         eventPublisher.publishEvent(new MedicationRegisteredEvent(medication.getId(), medication.getPatientId()));

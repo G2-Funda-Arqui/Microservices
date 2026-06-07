@@ -111,7 +111,7 @@ Ejecuta el contenedor conectado a PostgreSQL, RabbitMQ e IAM:
 ```powershell
 docker run --rm --name payments-service-local `
   --network docker_default `
-  -p 8083:8083 `
+  -p 8084:8084 `
   -e PAYMENTS_DB_URL=jdbc:postgresql://medibridge-postgres:5432/medibridge_payments `
   -e PAYMENTS_DB_USERNAME=postgres `
   -e PAYMENTS_DB_PASSWORD=12345678 `
