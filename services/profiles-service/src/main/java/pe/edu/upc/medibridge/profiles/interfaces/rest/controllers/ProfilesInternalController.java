@@ -8,10 +8,13 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import pe.edu.upc.medibridge.profiles.domain.model.queries.CanDoctorAttendPatientQuery;
 import pe.edu.upc.medibridge.profiles.domain.model.queries.CanFamilyMemberAccessPatientQuery;
+import pe.edu.upc.medibridge.profiles.domain.model.queries.GetCareTeamMembersByPatientIdQuery;
 import pe.edu.upc.medibridge.profiles.domain.model.queries.GetPatientProfileByIdQuery;
 import pe.edu.upc.medibridge.profiles.domain.services.CareRelationshipQueryService;
 import pe.edu.upc.medibridge.profiles.domain.services.PatientProfileQueryService;
+import pe.edu.upc.medibridge.profiles.interfaces.rest.resources.CareTeamMembersResource;
 import pe.edu.upc.medibridge.profiles.interfaces.rest.resources.PatientProfileResource;
+import pe.edu.upc.medibridge.profiles.interfaces.rest.transform.CareTeamMembersResourceFromValueObjectAssembler;
 import pe.edu.upc.medibridge.profiles.interfaces.rest.transform.PatientProfileResourceFromEntityAssembler;
 
 @RestController
@@ -39,6 +42,16 @@ public class ProfilesInternalController {
         return patientProfileQueryService.handle(new GetPatientProfileByIdQuery(patientId))
                 .map(PatientProfileResourceFromEntityAssembler::toResourceFromEntity)
                 .orElseThrow(PatientProfileNotFoundException::new);
+    }
+
+    @GetMapping("/patients/{patientId}/care-team-members")
+    public CareTeamMembersResource getCareTeamMembersByPatientId(@PathVariable Long patientId) {
+        if (patientId == null || patientProfileQueryService.handle(new GetPatientProfileByIdQuery(patientId)).isEmpty()) {
+            throw new PatientProfileNotFoundException();
+        }
+
+        var members = careRelationshipQueryService.handle(new GetCareTeamMembersByPatientIdQuery(patientId));
+        return CareTeamMembersResourceFromValueObjectAssembler.toResourceFromValueObject(members);
     }
 
     @GetMapping("/doctors/{doctorId}/can-attend/{patientId}")

@@ -1,0 +1,43 @@
+server:
+  port: ${PORT:${SERVER_PORT:8088}}
+
+spring:
+  application:
+    name: communication-service
+  data:
+    mongodb:
+      uri: ${COMMUNICATION_MONGODB_URI:mongodb://medibridge:medibridge@localhost:27017/medibridge_communication?authSource=admin}
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:medibridge}
+    password: ${RABBITMQ_PASSWORD:medibridge}
+    virtual-host: ${RABBITMQ_VHOST:/}
+    listener:
+      simple:
+        retry:
+          enabled: true
+          initial-interval: 1000ms
+          max-attempts: 3
+          multiplier: 2
+          max-interval: 10000ms
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${IAM_JWK_SET_URI:http://localhost:8081/api/v1/jwks/.well-known/jwks.json}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+medibridge:
+  services:
+    profiles:
+      base-url: ${PROFILES_SERVICE_BASE_URL:http://localhost:8082}
