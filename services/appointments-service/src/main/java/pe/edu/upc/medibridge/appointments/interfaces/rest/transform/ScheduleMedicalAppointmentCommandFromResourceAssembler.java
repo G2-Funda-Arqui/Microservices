@@ -4,12 +4,13 @@ import pe.edu.upc.medibridge.appointments.domain.model.commands.ScheduleMedicalA
 import pe.edu.upc.medibridge.appointments.interfaces.rest.resources.ScheduleMedicalAppointmentResource;
 
 public class ScheduleMedicalAppointmentCommandFromResourceAssembler {
-    public static ScheduleMedicalAppointmentCommand toCommandFromResource(ScheduleMedicalAppointmentResource resource) {
+    public static ScheduleMedicalAppointmentCommand toCommandFromResource(ScheduleMedicalAppointmentResource resource, Long requestedByUserId) {
         return new ScheduleMedicalAppointmentCommand(
                 resource.patientId(),
                 resource.doctorProfileId(),
                 resource.startsAt(),
                 resource.durationInMinutes(),
-                resource.reason());
+                resource.reason(),
+                requestedByUserId);
     }
 }

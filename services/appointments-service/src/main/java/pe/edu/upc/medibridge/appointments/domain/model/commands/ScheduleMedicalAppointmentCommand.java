@@ -7,5 +7,6 @@ public record ScheduleMedicalAppointmentCommand(
         Long doctorProfileId,
         LocalDateTime startsAt,
         Integer durationInMinutes,
-        String reason) {
+        String reason,
+        Long requestedByUserId) {
 }

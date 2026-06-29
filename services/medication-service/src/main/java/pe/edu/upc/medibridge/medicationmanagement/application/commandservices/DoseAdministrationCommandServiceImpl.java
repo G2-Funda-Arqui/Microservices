@@ -2,6 +2,7 @@ package pe.edu.upc.medibridge.medicationmanagement.application.commandservices;
 
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import pe.edu.upc.medibridge.medicationmanagement.application.queryservices.AuthenticatedPatientAccessService;
 import pe.edu.upc.medibridge.medicationmanagement.domain.model.commands.RecordDoseAdministrationCommand;
 import pe.edu.upc.medibridge.medicationmanagement.domain.model.commands.SkipDoseCommand;
 import pe.edu.upc.medibridge.medicationmanagement.domain.model.entities.ClinicalLog;
@@ -30,22 +31,26 @@ public class DoseAdministrationCommandServiceImpl implements DoseAdministrationC
     private final ClinicalLogRepository clinicalLogRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final MedicationIntegrationEventPublisher integrationEventPublisher;
+    private final AuthenticatedPatientAccessService authenticatedPatientAccessService;
 
     public DoseAdministrationCommandServiceImpl(
             DoseAdministrationRepository doseAdministrationRepository,
             MedicationRepository medicationRepository,
             ClinicalLogRepository clinicalLogRepository,
             ApplicationEventPublisher eventPublisher,
-            MedicationIntegrationEventPublisher integrationEventPublisher) {
+            MedicationIntegrationEventPublisher integrationEventPublisher,
+            AuthenticatedPatientAccessService authenticatedPatientAccessService) {
         this.doseAdministrationRepository = doseAdministrationRepository;
         this.medicationRepository = medicationRepository;
         this.clinicalLogRepository = clinicalLogRepository;
         this.eventPublisher = eventPublisher;
         this.integrationEventPublisher = integrationEventPublisher;
+        this.authenticatedPatientAccessService = authenticatedPatientAccessService;
     }
 
     @Override
     public Optional<DoseAdministration> handle(RecordDoseAdministrationCommand command) {
+        authenticatedPatientAccessService.requireAccess(command.requestedByUserId(), command.patientId());
         ensureDoseWasNotAdministeredToday(command.scheduleId(), command.administeredAt());
         var medication = medicationRepository.findById(command.medicationId())
                 .orElseThrow(() -> new MedicationNotFoundException(command.medicationId()));
@@ -71,6 +76,7 @@ public class DoseAdministrationCommandServiceImpl implements DoseAdministrationC
 
     @Override
     public Optional<DoseAdministration> handle(SkipDoseCommand command) {
+        authenticatedPatientAccessService.requireAccess(command.requestedByUserId(), command.patientId());
         var doseAdministration = doseAdministrationRepository.save(new DoseAdministration(command));
         clinicalLogRepository.save(new ClinicalLog(
                 command.patientId(),

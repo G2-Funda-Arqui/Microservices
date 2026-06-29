@@ -4,7 +4,9 @@ import pe.edu.upc.medibridge.profiles.domain.model.commands.CreateFamilyMemberPr
 import pe.edu.upc.medibridge.profiles.interfaces.rest.resources.CreateFamilyMemberProfileResource;
 
 public class CreateFamilyMemberProfileCommandFromResourceAssembler {
-    public static CreateFamilyMemberProfileCommand toCommandFromResource(CreateFamilyMemberProfileResource resource) {
-        return new CreateFamilyMemberProfileCommand(resource.userId(), resource.fullName());
+    public static CreateFamilyMemberProfileCommand toCommandFromResource(
+            CreateFamilyMemberProfileResource resource,
+            Long userId) {
+        return new CreateFamilyMemberProfileCommand(userId, resource.fullName());
     }
 }

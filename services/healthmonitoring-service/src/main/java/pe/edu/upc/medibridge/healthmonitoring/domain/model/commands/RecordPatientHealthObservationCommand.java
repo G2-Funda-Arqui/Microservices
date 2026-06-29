@@ -15,5 +15,6 @@ public record RecordPatientHealthObservationCommand(
         EmotionalState emotionalState,
         String emotionalNotes,
         String clinicalNotes,
-        LocalDateTime recordedAt) {
+        LocalDateTime recordedAt,
+        Long requestedByUserId) {
 }

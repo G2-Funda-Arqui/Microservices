@@ -1,11 +1,10 @@
 package pe.edu.upc.medibridge.profiles.interfaces.rest.controllers;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import pe.edu.upc.medibridge.profiles.domain.model.exceptions.ProfileNotFoundException;
 import pe.edu.upc.medibridge.profiles.domain.model.queries.CanDoctorAttendPatientQuery;
 import pe.edu.upc.medibridge.profiles.domain.model.queries.CanFamilyMemberAccessPatientQuery;
 import pe.edu.upc.medibridge.profiles.domain.model.queries.GetCareTeamMembersByPatientIdQuery;
@@ -41,13 +40,13 @@ public class ProfilesInternalController {
     public PatientProfileResource getPatientProfileById(@PathVariable Long patientId) {
         return patientProfileQueryService.handle(new GetPatientProfileByIdQuery(patientId))
                 .map(PatientProfileResourceFromEntityAssembler::toResourceFromEntity)
-                .orElseThrow(PatientProfileNotFoundException::new);
+                .orElseThrow(() -> new ProfileNotFoundException("Patient profile", patientId));
     }
 
     @GetMapping("/patients/{patientId}/care-team-members")
     public CareTeamMembersResource getCareTeamMembersByPatientId(@PathVariable Long patientId) {
         if (patientId == null || patientProfileQueryService.handle(new GetPatientProfileByIdQuery(patientId)).isEmpty()) {
-            throw new PatientProfileNotFoundException();
+            throw new ProfileNotFoundException("Patient profile", patientId);
         }
 
         var members = careRelationshipQueryService.handle(new GetCareTeamMembersByPatientIdQuery(patientId));
@@ -68,7 +67,14 @@ public class ProfilesInternalController {
         return careRelationshipQueryService.handle(new CanFamilyMemberAccessPatientQuery(familyMemberId, patientId));
     }
 
-    @ResponseStatus(HttpStatus.NOT_FOUND)
-    private static class PatientProfileNotFoundException extends RuntimeException {
+    @GetMapping("/users/{userId}/can-access/{patientId}")
+    public boolean canUserAccessPatient(
+            @PathVariable Long userId,
+            @PathVariable Long patientId) {
+        if (userId == null || patientId == null) {
+            return false;
+        }
+        var members = careRelationshipQueryService.handle(new GetCareTeamMembersByPatientIdQuery(patientId));
+        return members.careTeamUserIds().contains(userId);
     }
 }

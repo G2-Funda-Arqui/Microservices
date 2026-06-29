@@ -13,6 +13,7 @@ import java.util.Optional;
 public interface DoseAdministrationRepository extends JpaRepository<DoseAdministration, Integer> {
     List<DoseAdministration> findByMedicationIdOrderByOccurredAtDesc(Integer medicationId);
     long countByPatientId(Long patientId);
+    long countByPatientIdAndOccurredAtBetween(Long patientId, LocalDateTime start, LocalDateTime end);
     Optional<DoseAdministration> findByScheduleIdAndStatusAndOccurredAtBetween(
             Integer scheduleId,
             DoseAdministrationStatus status,

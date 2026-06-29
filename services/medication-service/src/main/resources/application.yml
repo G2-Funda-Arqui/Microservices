@@ -38,6 +38,8 @@ spring:
           jwk-set-uri: ${IAM_JWK_SET_URI:http://localhost:8081/api/v1/jwks/.well-known/jwks.json}
 
 services:
+  iam:
+    url: ${IAM_SERVICE_URL:http://localhost:8081}
   profiles:
     url: ${PROFILES_SERVICE_URL:http://localhost:8082}
 

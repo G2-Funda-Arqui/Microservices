@@ -8,5 +8,6 @@ public record GenerateClinicalReportCommand(
         Long patientId,
         ReportType reportType,
         LocalDate startDate,
-        LocalDate endDate) {
+        LocalDate endDate,
+        Long requestedByUserId) {
 }

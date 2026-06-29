@@ -4,7 +4,7 @@ import pe.edu.upc.medibridge.profiles.domain.model.commands.CreateDoctorProfileC
 import pe.edu.upc.medibridge.profiles.interfaces.rest.resources.CreateDoctorProfileResource;
 
 public class CreateDoctorProfileCommandFromResourceAssembler {
-    public static CreateDoctorProfileCommand toCommandFromResource(CreateDoctorProfileResource resource) {
-        return new CreateDoctorProfileCommand(resource.userId(), resource.fullName());
+    public static CreateDoctorProfileCommand toCommandFromResource(CreateDoctorProfileResource resource, Long userId) {
+        return new CreateDoctorProfileCommand(userId, resource.fullName());
     }
 }

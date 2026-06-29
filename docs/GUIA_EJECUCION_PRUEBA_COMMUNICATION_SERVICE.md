@@ -125,7 +125,6 @@ Body:
 
 ```json
 {
-  "senderUserId": 10,
   "recipientUserId": 15,
   "content": "Hola, este es un mensaje de prueba"
 }
@@ -241,7 +240,6 @@ Payload:
 
 ```json
 {
-  "senderUserId": 10,
   "recipientUserId": 15,
   "content": "Hola por WebSocket"
 }

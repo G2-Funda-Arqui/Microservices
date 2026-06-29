@@ -2,6 +2,7 @@ package pe.edu.upc.medibridge.communication.application.internal.commandservices
 
 import org.springframework.stereotype.Service;
 import pe.edu.upc.medibridge.communication.domain.model.documents.ChatMessage;
+import pe.edu.upc.medibridge.communication.domain.model.exceptions.ChatRoomNotAvailableException;
 import pe.edu.upc.medibridge.communication.domain.services.ChatMessageService;
 import pe.edu.upc.medibridge.communication.domain.services.ChatRoomService;
 import pe.edu.upc.medibridge.communication.infrastructure.persistence.mongodb.repositories.ChatMessageRepository;
@@ -30,7 +31,9 @@ public class ChatMessageServiceImpl implements ChatMessageService {
     public ChatMessage save(ChatMessage chatMessage) {
         var chatId = chatRoomService
                 .getChatRoomId(chatMessage.getSenderUserId(), chatMessage.getRecipientUserId(), true)
-                .orElseThrow();
+                .orElseThrow(() -> new ChatRoomNotAvailableException(
+                        chatMessage.getSenderUserId(),
+                        chatMessage.getRecipientUserId()));
         chatMessage.setChatId(chatId);
         if (chatMessage.getSentAt() == null) {
             chatMessage.setSentAt(Instant.now());

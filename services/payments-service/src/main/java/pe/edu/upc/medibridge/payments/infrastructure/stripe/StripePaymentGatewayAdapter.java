@@ -6,6 +6,7 @@ import com.stripe.model.Customer;
 import com.stripe.model.PaymentIntent;
 import com.stripe.param.CustomerCreateParams;
 import com.stripe.param.PaymentIntentCreateParams;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import pe.edu.upc.medibridge.payments.application.internal.outboundservices.acl.StripePaymentGatewayService;
@@ -22,6 +23,7 @@ public class StripePaymentGatewayAdapter implements StripePaymentGatewayService 
     }
 
     @Override
+    @CircuitBreaker(name = "stripeApi", fallbackMethod = "createCustomerFallback")
     public String createCustomer(Long userId) {
         try {
             var params = CustomerCreateParams.builder()
@@ -35,6 +37,7 @@ public class StripePaymentGatewayAdapter implements StripePaymentGatewayService 
     }
 
     @Override
+    @CircuitBreaker(name = "stripeApi", fallbackMethod = "createPaymentIntentFallback")
     public String createPaymentIntent(Long userId, Plan plan) {
         try {
             var params = PaymentIntentCreateParams.builder()
@@ -54,6 +57,14 @@ public class StripePaymentGatewayAdapter implements StripePaymentGatewayService 
         } catch (StripeException exception) {
             throw new PaymentProcessingException("Stripe payment intent creation failed: " + exception.getMessage());
         }
+    }
+
+    private String createCustomerFallback(Long userId, Throwable exception) {
+        throw new PaymentProcessingException("Stripe customer creation circuit breaker fallback: " + exception.getMessage());
+    }
+
+    private String createPaymentIntentFallback(Long userId, Plan plan, Throwable exception) {
+        throw new PaymentProcessingException("Stripe payment intent circuit breaker fallback: " + exception.getMessage());
     }
 
     private Long toMinorCurrencyUnit(BigDecimal amount) {

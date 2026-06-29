@@ -3,6 +3,7 @@ package pe.edu.upc.medibridge.appointments.application.internal.commandservices;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import pe.edu.upc.medibridge.appointments.application.internal.outboundservices.acl.ExternalProfilesContextService;
+import pe.edu.upc.medibridge.appointments.application.internal.queryservices.AuthenticatedPatientAccessService;
 import pe.edu.upc.medibridge.appointments.domain.model.aggregates.Appointment;
 import pe.edu.upc.medibridge.appointments.domain.model.commands.ScheduleFamilyVisitCommand;
 import pe.edu.upc.medibridge.appointments.domain.model.commands.ScheduleMedicalAppointmentCommand;
@@ -37,16 +38,19 @@ public class AppointmentCommandServiceImpl implements AppointmentCommandService 
     private final ApplicationEventPublisher eventPublisher;
     private final ExternalProfilesContextService externalProfilesContextService;
     private final AppointmentIntegrationEventPublisher integrationEventPublisher;
+    private final AuthenticatedPatientAccessService authenticatedPatientAccessService;
 
     public AppointmentCommandServiceImpl(
             AppointmentRepository appointmentRepository,
             ApplicationEventPublisher eventPublisher,
             ExternalProfilesContextService externalProfilesContextService,
-            AppointmentIntegrationEventPublisher integrationEventPublisher) {
+            AppointmentIntegrationEventPublisher integrationEventPublisher,
+            AuthenticatedPatientAccessService authenticatedPatientAccessService) {
         this.appointmentRepository = appointmentRepository;
         this.eventPublisher = eventPublisher;
         this.externalProfilesContextService = externalProfilesContextService;
         this.integrationEventPublisher = integrationEventPublisher;
+        this.authenticatedPatientAccessService = authenticatedPatientAccessService;
     }
 
     @Override
@@ -55,6 +59,7 @@ public class AppointmentCommandServiceImpl implements AppointmentCommandService 
 
         var timeSlot = buildAndValidateTimeSlot(command.startsAt(), command.durationInMinutes());
         validatePatientReference(command.patientId());
+        authenticatedPatientAccessService.requireAccess(command.requestedByUserId(), command.patientId());
         validateFamilyMemberAccess(command.familyMemberProfileId(), command.patientId());
         validateAvailability(command.patientId(), timeSlot);
 
@@ -71,6 +76,7 @@ public class AppointmentCommandServiceImpl implements AppointmentCommandService 
 
         var timeSlot = buildAndValidateTimeSlot(command.startsAt(), command.durationInMinutes());
         validatePatientReference(command.patientId());
+        authenticatedPatientAccessService.requireAccess(command.requestedByUserId(), command.patientId());
         validateDoctorAssignment(command.doctorProfileId(), command.patientId());
         validateAvailability(command.patientId(), timeSlot);
 

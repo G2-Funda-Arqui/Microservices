@@ -1,6 +1,7 @@
 package pe.edu.upc.medibridge.reportsanalytics.application.internal.commandservices;
 
 import org.springframework.stereotype.Service;
+import pe.edu.upc.medibridge.reportsanalytics.application.internal.queryservices.AuthenticatedPatientAccessService;
 import pe.edu.upc.medibridge.reportsanalytics.application.internal.outboundservices.acl.ExternalAppointmentService;
 import pe.edu.upc.medibridge.reportsanalytics.application.internal.outboundservices.acl.ExternalHealthMonitoringService;
 import pe.edu.upc.medibridge.reportsanalytics.application.internal.outboundservices.acl.ExternalMedicationService;
@@ -29,6 +30,7 @@ public class ClinicalReportCommandServiceImpl implements ClinicalReportCommandSe
     private final ExternalAppointmentService externalAppointmentService;
     private final ExternalPatientProfileService externalPatientProfileService;
     private final ReportsAnalyticsIntegrationEventPublisher eventPublisher;
+    private final AuthenticatedPatientAccessService authenticatedPatientAccessService;
 
     public ClinicalReportCommandServiceImpl(
             ClinicalReportRepository clinicalReportRepository,
@@ -38,7 +40,8 @@ public class ClinicalReportCommandServiceImpl implements ClinicalReportCommandSe
             ExternalMedicationService externalMedicationService,
             ExternalAppointmentService externalAppointmentService,
             ExternalPatientProfileService externalPatientProfileService,
-            ReportsAnalyticsIntegrationEventPublisher eventPublisher) {
+            ReportsAnalyticsIntegrationEventPublisher eventPublisher,
+            AuthenticatedPatientAccessService authenticatedPatientAccessService) {
         this.clinicalReportRepository = clinicalReportRepository;
         this.pdfReportGenerator = pdfReportGenerator;
         this.pdfReportStorage = pdfReportStorage;
@@ -47,6 +50,7 @@ public class ClinicalReportCommandServiceImpl implements ClinicalReportCommandSe
         this.externalAppointmentService = externalAppointmentService;
         this.externalPatientProfileService = externalPatientProfileService;
         this.eventPublisher = eventPublisher;
+        this.authenticatedPatientAccessService = authenticatedPatientAccessService;
     }
 
     @Override
@@ -54,6 +58,7 @@ public class ClinicalReportCommandServiceImpl implements ClinicalReportCommandSe
         if (!externalPatientProfileService.patientExists(command.patientId())) {
             throw new InvalidPatientReferenceException(command.patientId());
         }
+        authenticatedPatientAccessService.requireAccess(command.requestedByUserId(), command.patientId());
 
         var patientName = externalPatientProfileService.getPatientFullName(command.patientId())
                 .orElse("Registered patient");
@@ -67,8 +72,14 @@ public class ClinicalReportCommandServiceImpl implements ClinicalReportCommandSe
                 "Patient: " + patientName + ". Report type: " + command.reportType()
                         + ". Evaluation period: " + command.startDate() + " to " + command.endDate() + ".",
                 1));
-        report.addSection(new ReportSection("Health monitoring", externalHealthMonitoringService.getPatientClinicalSummary(command.patientId()), 2));
-        report.addSection(new ReportSection("Medication management", externalMedicationService.getMedicationSummary(command.patientId()), 3));
+        report.addSection(new ReportSection("Health monitoring", externalHealthMonitoringService.getPatientClinicalSummary(
+                command.patientId(),
+                command.startDate(),
+                command.endDate()), 2));
+        report.addSection(new ReportSection("Medication management", externalMedicationService.getMedicationSummary(
+                command.patientId(),
+                command.startDate(),
+                command.endDate()), 3));
         report.addSection(new ReportSection(
                 "Appointments",
                 externalAppointmentService.getAppointmentSummary(
@@ -85,6 +96,7 @@ public class ClinicalReportCommandServiceImpl implements ClinicalReportCommandSe
     public Optional<ClinicalReport> handle(GeneratePdfReportCommand command) {
         var report = clinicalReportRepository.findById(command.reportId())
                 .orElseThrow(() -> new ReportNotFoundException(command.reportId()));
+        authenticatedPatientAccessService.requireAccess(command.requestedByUserId(), report.getPatientId());
         var pdf = pdfReportGenerator.generate(report);
         var pdfPath = pdfReportStorage.savePdf(report.getId(), pdf);
         report.attachPdf(pdfPath);

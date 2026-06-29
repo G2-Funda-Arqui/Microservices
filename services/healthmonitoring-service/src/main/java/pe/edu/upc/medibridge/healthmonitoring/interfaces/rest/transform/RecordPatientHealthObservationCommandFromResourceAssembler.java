@@ -7,7 +7,8 @@ public class RecordPatientHealthObservationCommandFromResourceAssembler {
 
     public static RecordPatientHealthObservationCommand toCommandFromResource(
             Long patientId,
-            RecordPatientHealthObservationResource resource) {
+            RecordPatientHealthObservationResource resource,
+            Long requestedByUserId) {
         return new RecordPatientHealthObservationCommand(
                 patientId,
                 resource.recordedByDoctorProfileId(),
@@ -18,6 +19,7 @@ public class RecordPatientHealthObservationCommandFromResourceAssembler {
                 resource.emotionalState(),
                 resource.emotionalNotes(),
                 resource.clinicalNotes(),
-                resource.recordedAt());
+                resource.recordedAt(),
+                requestedByUserId);
     }
 }

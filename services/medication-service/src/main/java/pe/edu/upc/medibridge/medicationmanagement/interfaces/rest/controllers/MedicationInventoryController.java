@@ -4,7 +4,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
+import pe.edu.upc.medibridge.medicationmanagement.application.queryservices.AuthenticatedPatientAccessService;
 import pe.edu.upc.medibridge.medicationmanagement.domain.model.commands.UpdateMedicationStockCommand;
 import pe.edu.upc.medibridge.medicationmanagement.domain.model.queries.GetLowStockMedicationsQuery;
 import pe.edu.upc.medibridge.medicationmanagement.domain.model.queries.GetMedicationByIdQuery;
@@ -26,17 +29,23 @@ import java.util.List;
 public class MedicationInventoryController {
     private final MedicationInventoryCommandService medicationInventoryCommandService;
     private final MedicationInventoryQueryService medicationInventoryQueryService;
+    private final AuthenticatedPatientAccessService authenticatedPatientAccessService;
 
     public MedicationInventoryController(
             MedicationInventoryCommandService medicationInventoryCommandService,
-            MedicationInventoryQueryService medicationInventoryQueryService) {
+            MedicationInventoryQueryService medicationInventoryQueryService,
+            AuthenticatedPatientAccessService authenticatedPatientAccessService) {
         this.medicationInventoryCommandService = medicationInventoryCommandService;
         this.medicationInventoryQueryService = medicationInventoryQueryService;
+        this.authenticatedPatientAccessService = authenticatedPatientAccessService;
     }
 
     @PostMapping
-    public ResponseEntity<MedicationResponse> registerMedication(@RequestBody RegisterMedicationRequest resource) {
-        var command = RegisterMedicationCommandFromResourceAssembler.toCommandFromResource(resource);
+    public ResponseEntity<MedicationResponse> registerMedication(
+            @RequestBody RegisterMedicationRequest resource,
+            @AuthenticationPrincipal Jwt jwt) {
+        var requestedByUserId = authenticatedPatientAccessService.resolveUserId(jwt);
+        var command = RegisterMedicationCommandFromResourceAssembler.toCommandFromResource(resource, requestedByUserId);
         var medication = medicationInventoryCommandService.handle(command);
         return medication
                 .map(value -> new ResponseEntity<>(
@@ -46,16 +55,22 @@ public class MedicationInventoryController {
     }
 
     @GetMapping("/{medicationId}")
-    public ResponseEntity<MedicationResponse> getMedicationById(@PathVariable Integer medicationId) {
-        var medication = medicationInventoryQueryService.handle(new GetMedicationByIdQuery(medicationId));
+    public ResponseEntity<MedicationResponse> getMedicationById(
+            @PathVariable Integer medicationId,
+            @AuthenticationPrincipal Jwt jwt) {
+        var requestedByUserId = authenticatedPatientAccessService.resolveUserId(jwt);
+        var medication = medicationInventoryQueryService.handle(new GetMedicationByIdQuery(medicationId, requestedByUserId));
         return medication
                 .map(value -> ResponseEntity.ok(MedicationResponseFromEntityAssembler.toResourceFromEntity(value)))
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @GetMapping("/patients/{patientId}")
-    public ResponseEntity<List<MedicationResponse>> getMedicationsByPatient(@PathVariable Long patientId) {
-        var medications = medicationInventoryQueryService.handle(new GetMedicationsByPatientQuery(patientId));
+    public ResponseEntity<List<MedicationResponse>> getMedicationsByPatient(
+            @PathVariable Long patientId,
+            @AuthenticationPrincipal Jwt jwt) {
+        var requestedByUserId = authenticatedPatientAccessService.resolveUserId(jwt);
+        var medications = medicationInventoryQueryService.handle(new GetMedicationsByPatientQuery(patientId, requestedByUserId));
         var resources = medications.stream()
                 .map(MedicationResponseFromEntityAssembler::toResourceFromEntity)
                 .toList();
@@ -65,17 +80,22 @@ public class MedicationInventoryController {
     @PatchMapping("/{medicationId}/stock")
     public ResponseEntity<MedicationResponse> updateMedicationStock(
             @PathVariable Integer medicationId,
-            @RequestBody UpdateMedicationStockRequest resource) {
+            @RequestBody UpdateMedicationStockRequest resource,
+            @AuthenticationPrincipal Jwt jwt) {
+        var requestedByUserId = authenticatedPatientAccessService.resolveUserId(jwt);
         var medication = medicationInventoryCommandService.handle(
-                new UpdateMedicationStockCommand(medicationId, resource.stockQuantity()));
+                new UpdateMedicationStockCommand(medicationId, resource.stockQuantity(), requestedByUserId));
         return medication
                 .map(value -> ResponseEntity.ok(MedicationResponseFromEntityAssembler.toResourceFromEntity(value)))
                 .orElseGet(() -> ResponseEntity.badRequest().build());
     }
 
     @GetMapping("/patients/{patientId}/low-stock")
-    public ResponseEntity<List<LowStockAlertResponse>> getLowStockMedications(@PathVariable Long patientId) {
-        var medications = medicationInventoryQueryService.handle(new GetLowStockMedicationsQuery(patientId));
+    public ResponseEntity<List<LowStockAlertResponse>> getLowStockMedications(
+            @PathVariable Long patientId,
+            @AuthenticationPrincipal Jwt jwt) {
+        var requestedByUserId = authenticatedPatientAccessService.resolveUserId(jwt);
+        var medications = medicationInventoryQueryService.handle(new GetLowStockMedicationsQuery(patientId, requestedByUserId));
         var resources = medications.stream()
                 .map(MedicationResponseFromEntityAssembler::toLowStockResourceFromEntity)
                 .toList();

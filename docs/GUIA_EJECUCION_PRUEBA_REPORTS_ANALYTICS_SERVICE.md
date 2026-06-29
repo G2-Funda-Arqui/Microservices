@@ -761,9 +761,11 @@ Reports llama internamente a:
 
 ```text
 GET http://localhost:8084/api/v1/internal/appointments/patients/{patientId}/summary?startDate={startDate}&endDate={endDate}
-GET http://localhost:8085/api/v1/internal/health-monitoring/patients/{patientId}/summary
-GET http://localhost:8086/api/v1/internal/medications/patients/{patientId}/summary
+GET http://localhost:8085/api/v1/internal/health-monitoring/patients/{patientId}/summary?startDate={startDate}&endDate={endDate}
+GET http://localhost:8086/api/v1/internal/medications/patients/{patientId}/summary?startDate={startDate}&endDate={endDate}
 ```
+
+Para validar que el rango se respeta, crea datos dentro y fuera del periodo del reporte. Appointments filtra por `startsAt`, Health Monitoring filtra observaciones y alertas por fecha, y Medication filtra `doseAdministrations` por `occurredAt`; los conteos de medicaciones activas y bajo stock son estado actual del inventario.
 
 ### Error de base de datos
 

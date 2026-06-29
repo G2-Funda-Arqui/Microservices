@@ -15,18 +15,27 @@ import java.util.Optional;
 public class AppointmentQueryServiceImpl implements AppointmentQueryService {
 
     private final AppointmentRepository appointmentRepository;
+    private final AuthenticatedPatientAccessService authenticatedPatientAccessService;
 
-    public AppointmentQueryServiceImpl(AppointmentRepository appointmentRepository) {
+    public AppointmentQueryServiceImpl(
+            AppointmentRepository appointmentRepository,
+            AuthenticatedPatientAccessService authenticatedPatientAccessService) {
         this.appointmentRepository = appointmentRepository;
+        this.authenticatedPatientAccessService = authenticatedPatientAccessService;
     }
 
     @Override
     public Optional<Appointment> handle(GetAppointmentByIdQuery query) {
-        return appointmentRepository.findById(query.appointmentId());
+        var appointment = appointmentRepository.findById(query.appointmentId());
+        appointment.ifPresent(value -> authenticatedPatientAccessService.requireAccess(query.requestedByUserId(), value.getPatientId()));
+        return appointment;
     }
 
     @Override
     public List<Appointment> handle(GetAppointmentsByPatientQuery query) {
+        if (query.requestedByUserId() != null) {
+            authenticatedPatientAccessService.requireAccess(query.requestedByUserId(), query.patientId());
+        }
         return appointmentRepository.findByPatientIdOrderByStartsAtAsc(query.patientId());
     }
 

@@ -2,6 +2,7 @@ package pe.edu.upc.medibridge.medicationmanagement.application.commandservices;
 
 import org.springframework.stereotype.Service;
 import pe.edu.upc.medibridge.medicationmanagement.application.outboundservices.acl.ExternalPatientContextService;
+import pe.edu.upc.medibridge.medicationmanagement.application.queryservices.AuthenticatedPatientAccessService;
 import pe.edu.upc.medibridge.medicationmanagement.domain.model.aggregates.MedicationSchedule;
 import pe.edu.upc.medibridge.medicationmanagement.domain.model.commands.CreateMedicationScheduleCommand;
 import pe.edu.upc.medibridge.medicationmanagement.domain.model.exceptions.InvalidPatientReferenceException;
@@ -17,14 +18,17 @@ public class MedicationScheduleCommandServiceImpl implements MedicationScheduleC
     private final MedicationScheduleRepository medicationScheduleRepository;
     private final MedicationRepository medicationRepository;
     private final ExternalPatientContextService externalPatientContextService;
+    private final AuthenticatedPatientAccessService authenticatedPatientAccessService;
 
     public MedicationScheduleCommandServiceImpl(
             MedicationScheduleRepository medicationScheduleRepository,
             MedicationRepository medicationRepository,
-            ExternalPatientContextService externalPatientContextService) {
+            ExternalPatientContextService externalPatientContextService,
+            AuthenticatedPatientAccessService authenticatedPatientAccessService) {
         this.medicationScheduleRepository = medicationScheduleRepository;
         this.medicationRepository = medicationRepository;
         this.externalPatientContextService = externalPatientContextService;
+        this.authenticatedPatientAccessService = authenticatedPatientAccessService;
     }
 
     @Override
@@ -32,6 +36,7 @@ public class MedicationScheduleCommandServiceImpl implements MedicationScheduleC
         if (!externalPatientContextService.patientExists(command.patientId())) {
             throw new InvalidPatientReferenceException(command.patientId());
         }
+        authenticatedPatientAccessService.requireAccess(command.requestedByUserId(), command.patientId());
         medicationRepository.findById(command.medicationId())
                 .orElseThrow(() -> new MedicationNotFoundException(command.medicationId()));
         return Optional.of(medicationScheduleRepository.save(new MedicationSchedule(command)));

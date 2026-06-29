@@ -4,7 +4,7 @@ import pe.edu.upc.medibridge.medicationmanagement.domain.model.commands.CreateMe
 import pe.edu.upc.medibridge.medicationmanagement.interfaces.rest.resources.CreateMedicationScheduleRequest;
 
 public class CreateMedicationScheduleCommandFromResourceAssembler {
-    public static CreateMedicationScheduleCommand toCommandFromResource(CreateMedicationScheduleRequest resource) {
+    public static CreateMedicationScheduleCommand toCommandFromResource(CreateMedicationScheduleRequest resource, Long requestedByUserId) {
         return new CreateMedicationScheduleCommand(
                 resource.medicationId(),
                 resource.patientId(),
@@ -12,6 +12,7 @@ public class CreateMedicationScheduleCommandFromResourceAssembler {
                 resource.timesPerDay(),
                 resource.administrationTime(),
                 resource.startDate(),
-                resource.endDate());
+                resource.endDate(),
+                requestedByUserId);
     }
 }

@@ -6,7 +6,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import pe.edu.upc.medibridge.medicationmanagement.application.outboundservices.acl.ExternalPatientContextService;
 import pe.edu.upc.medibridge.medicationmanagement.domain.model.entities.PatientReference;
-import pe.edu.upc.medibridge.medicationmanagement.infrastructure.acl.ProfilesServiceClient;
+import pe.edu.upc.medibridge.medicationmanagement.infrastructure.acl.PatientProfileReferenceAdapter;
 import pe.edu.upc.medibridge.medicationmanagement.infrastructure.persistence.jpa.repositories.PatientReferenceRepository;
 
 @Service
@@ -14,13 +14,13 @@ public class PatientContextFacade implements ExternalPatientContextService {
     private static final Logger LOGGER = LoggerFactory.getLogger(PatientContextFacade.class);
 
     private final PatientReferenceRepository patientReferenceRepository;
-    private final ProfilesServiceClient profilesServiceClient;
+    private final PatientProfileReferenceAdapter patientProfileReferenceAdapter;
 
     public PatientContextFacade(
             PatientReferenceRepository patientReferenceRepository,
-            ProfilesServiceClient profilesServiceClient) {
+            PatientProfileReferenceAdapter patientProfileReferenceAdapter) {
         this.patientReferenceRepository = patientReferenceRepository;
-        this.profilesServiceClient = profilesServiceClient;
+        this.patientProfileReferenceAdapter = patientProfileReferenceAdapter;
     }
 
     @Override
@@ -36,7 +36,7 @@ public class PatientContextFacade implements ExternalPatientContextService {
 
     private boolean synchronizePatientReferenceFromProfiles(Long patientId) {
         try {
-            if (!profilesServiceClient.patientExists(patientId)) {
+            if (!patientProfileReferenceAdapter.patientExists(patientId)) {
                 return false;
             }
             synchronizePatientReference(patientId);
@@ -54,10 +54,10 @@ public class PatientContextFacade implements ExternalPatientContextService {
 
     private void synchronizePatientReference(Long patientId) {
         try {
-            var profile = profilesServiceClient.getPatientProfileById(patientId);
-            var fullName = profile == null || profile.fullName() == null || profile.fullName().isBlank()
+            var profileFullName = patientProfileReferenceAdapter.getPatientFullName(patientId);
+            var fullName = profileFullName.isEmpty() || profileFullName.get().isBlank()
                     ? "Patient " + patientId
-                    : profile.fullName();
+                    : profileFullName.get();
 
             patientReferenceRepository.findByPatientId(patientId)
                     .ifPresentOrElse(

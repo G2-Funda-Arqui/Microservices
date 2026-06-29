@@ -14,23 +14,33 @@ import java.util.Optional;
 @Service
 public class MedicationInventoryQueryServiceImpl implements MedicationInventoryQueryService {
     private final MedicationRepository medicationRepository;
+    private final AuthenticatedPatientAccessService authenticatedPatientAccessService;
 
-    public MedicationInventoryQueryServiceImpl(MedicationRepository medicationRepository) {
+    public MedicationInventoryQueryServiceImpl(
+            MedicationRepository medicationRepository,
+            AuthenticatedPatientAccessService authenticatedPatientAccessService) {
         this.medicationRepository = medicationRepository;
+        this.authenticatedPatientAccessService = authenticatedPatientAccessService;
     }
 
     @Override
     public Optional<Medication> handle(GetMedicationByIdQuery query) {
-        return medicationRepository.findById(query.medicationId());
+        var medication = medicationRepository.findById(query.medicationId());
+        medication.ifPresent(value -> authenticatedPatientAccessService.requireAccess(query.requestedByUserId(), value.getPatientId()));
+        return medication;
     }
 
     @Override
     public List<Medication> handle(GetMedicationsByPatientQuery query) {
+        if (query.requestedByUserId() != null) {
+            authenticatedPatientAccessService.requireAccess(query.requestedByUserId(), query.patientId());
+        }
         return medicationRepository.findByPatientIdAndActiveTrue(query.patientId());
     }
 
     @Override
     public List<Medication> handle(GetLowStockMedicationsQuery query) {
+        authenticatedPatientAccessService.requireAccess(query.requestedByUserId(), query.patientId());
         return medicationRepository.findByPatientIdAndActiveTrue(query.patientId()).stream()
                 .filter(Medication::isLowStock)
                 .toList();

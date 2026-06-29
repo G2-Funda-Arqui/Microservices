@@ -13,18 +13,25 @@ import java.util.Optional;
 @Service
 public class ClinicalReportQueryServiceImpl implements ClinicalReportQueryService {
     private final ClinicalReportRepository clinicalReportRepository;
+    private final AuthenticatedPatientAccessService authenticatedPatientAccessService;
 
-    public ClinicalReportQueryServiceImpl(ClinicalReportRepository clinicalReportRepository) {
+    public ClinicalReportQueryServiceImpl(
+            ClinicalReportRepository clinicalReportRepository,
+            AuthenticatedPatientAccessService authenticatedPatientAccessService) {
         this.clinicalReportRepository = clinicalReportRepository;
+        this.authenticatedPatientAccessService = authenticatedPatientAccessService;
     }
 
     @Override
     public Optional<ClinicalReport> handle(GetReportByIdQuery query) {
-        return clinicalReportRepository.findById(query.reportId());
+        var report = clinicalReportRepository.findById(query.reportId());
+        report.ifPresent(value -> authenticatedPatientAccessService.requireAccess(query.requestedByUserId(), value.getPatientId()));
+        return report;
     }
 
     @Override
     public List<ClinicalReport> handle(GetReportsByPatientQuery query) {
+        authenticatedPatientAccessService.requireAccess(query.requestedByUserId(), query.patientId());
         return clinicalReportRepository.findByPatientIdOrderByGeneratedAtDesc(query.patientId());
     }
 }

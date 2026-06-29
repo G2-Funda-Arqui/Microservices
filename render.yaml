@@ -1,0 +1,64 @@
+﻿services:
+  - type: web
+    name: medibridge-appointments-service
+    runtime: docker
+    rootDir: services/appointments-service
+    dockerfilePath: Dockerfile
+    plan: free
+    healthCheckPath: /actuator/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: APPOINTMENTS_DB_URL
+        sync: false
+      - key: APPOINTMENTS_DB_USERNAME
+        sync: false
+      - key: APPOINTMENTS_DB_PASSWORD
+        sync: false
+      - key: JPA_DDL_AUTO
+        value: validate
+      - key: RABBITMQ_HOST
+        sync: false
+      - key: RABBITMQ_PORT
+        sync: false
+      - key: RABBITMQ_USER
+        sync: false
+      - key: RABBITMQ_PASSWORD
+        sync: false
+      - key: RABBITMQ_VHOST
+        sync: false
+      - key: IAM_JWK_SET_URI
+        sync: false
+      - key: PROFILES_SERVICE_URL
+        sync: false
+
+  - type: web
+    name: medibridge-medication-service
+    runtime: docker
+    rootDir: services/medication-service
+    dockerfilePath: Dockerfile
+    plan: free
+    healthCheckPath: /actuator/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: MEDICATION_DB_URL
+        sync: false
+      - key: MEDICATION_DB_USERNAME
+        sync: false
+      - key: MEDICATION_DB_PASSWORD
+        sync: false
+      - key: JPA_DDL_AUTO
+        value: validate
+      - key: RABBITMQ_HOST
+        sync: false
+      - key: RABBITMQ_PORT
+        sync: false
+      - key: RABBITMQ_USER
+        sync: false
+      - key: RABBITMQ_PASSWORD
+        sync: false
+      - key: RABBITMQ_VHOST
+        sync: false
+      - key: IAM_JWK_SET_URI
+        sync: false
+      - key: PROFILES_SERVICE_URL
+        sync: false

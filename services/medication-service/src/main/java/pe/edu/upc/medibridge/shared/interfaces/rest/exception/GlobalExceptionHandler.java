@@ -14,19 +14,24 @@ import pe.edu.upc.medibridge.medicationmanagement.domain.model.exceptions.Insuff
 import pe.edu.upc.medibridge.medicationmanagement.domain.model.exceptions.InvalidPatientReferenceException;
 import pe.edu.upc.medibridge.medicationmanagement.domain.model.exceptions.MedicationNotFoundException;
 import pe.edu.upc.medibridge.medicationmanagement.domain.model.exceptions.MedicationScheduleConflictException;
+import pe.edu.upc.medibridge.medicationmanagement.domain.model.exceptions.PatientAccessDeniedException;
 import pe.edu.upc.medibridge.shared.interfaces.rest.resources.ErrorResponseResource;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(InvalidPatientReferenceException.class)
+    @ExceptionHandler({
+            InvalidPatientReferenceException.class,
+            NoSuchElementException.class
+    })
     public ResponseEntity<ErrorResponseResource> handleInvalidPatientReference(
             RuntimeException exception,
             HttpServletRequest request) {
-        return buildResponse(HttpStatus.NOT_FOUND, exception.getMessage(), request, List.of());
+        return buildResponse(HttpStatus.NOT_FOUND, messageOrDefault(exception, "Resource not found"), request, List.of());
     }
 
     @ExceptionHandler(MedicationNotFoundException.class)
@@ -59,6 +64,11 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.CONFLICT, exception.getMessage(), request, List.of());
     }
 
+    @ExceptionHandler(PatientAccessDeniedException.class)
+    public ResponseEntity<ErrorResponseResource> handleForbidden(RuntimeException exception, HttpServletRequest request) {
+        return buildResponse(HttpStatus.FORBIDDEN, exception.getMessage(), request, List.of());
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponseResource> handleValidation(
             MethodArgumentNotValidException exception,
@@ -79,6 +89,11 @@ public class GlobalExceptionHandler {
                 "Malformed JSON request or invalid field format",
                 request,
                 List.of(rootCauseMessage(exception)));
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponseResource> handleUnexpected(Exception exception, HttpServletRequest request) {
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected server error", request, List.of());
     }
 
     private ResponseEntity<ErrorResponseResource> buildResponse(
@@ -102,5 +117,9 @@ public class GlobalExceptionHandler {
             cause = cause.getCause();
         }
         return cause.getMessage() != null ? cause.getMessage() : "Request could not be processed";
+    }
+
+    private String messageOrDefault(Throwable exception, String defaultMessage) {
+        return exception.getMessage() != null ? exception.getMessage() : defaultMessage;
     }
 }

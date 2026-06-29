@@ -3,6 +3,7 @@ package pe.edu.upc.medibridge.medicationmanagement.application.commandservices;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import pe.edu.upc.medibridge.medicationmanagement.application.outboundservices.acl.ExternalPatientContextService;
+import pe.edu.upc.medibridge.medicationmanagement.application.queryservices.AuthenticatedPatientAccessService;
 import pe.edu.upc.medibridge.medicationmanagement.domain.model.commands.RegisterMedicationCommand;
 import pe.edu.upc.medibridge.medicationmanagement.domain.model.commands.UpdateMedicationStockCommand;
 import pe.edu.upc.medibridge.medicationmanagement.domain.model.entities.Medication;
@@ -23,16 +24,19 @@ public class MedicationInventoryCommandServiceImpl implements MedicationInventor
     private final ApplicationEventPublisher eventPublisher;
     private final ExternalPatientContextService externalPatientContextService;
     private final MedicationIntegrationEventPublisher integrationEventPublisher;
+    private final AuthenticatedPatientAccessService authenticatedPatientAccessService;
 
     public MedicationInventoryCommandServiceImpl(
             MedicationRepository medicationRepository,
             ApplicationEventPublisher eventPublisher,
             ExternalPatientContextService externalPatientContextService,
-            MedicationIntegrationEventPublisher integrationEventPublisher) {
+            MedicationIntegrationEventPublisher integrationEventPublisher,
+            AuthenticatedPatientAccessService authenticatedPatientAccessService) {
         this.medicationRepository = medicationRepository;
         this.eventPublisher = eventPublisher;
         this.externalPatientContextService = externalPatientContextService;
         this.integrationEventPublisher = integrationEventPublisher;
+        this.authenticatedPatientAccessService = authenticatedPatientAccessService;
     }
 
     @Override
@@ -40,6 +44,7 @@ public class MedicationInventoryCommandServiceImpl implements MedicationInventor
         if (!externalPatientContextService.patientExists(command.patientId())) {
             throw new InvalidPatientReferenceException(command.patientId());
         }
+        authenticatedPatientAccessService.requireAccess(command.requestedByUserId(), command.patientId());
         var medication = medicationRepository.save(new Medication(command));
         eventPublisher.publishEvent(new MedicationRegisteredEvent(medication.getId(), medication.getPatientId()));
         integrationEventPublisher.publishMedicationRegistered(medication);
@@ -57,6 +62,7 @@ public class MedicationInventoryCommandServiceImpl implements MedicationInventor
     public Optional<Medication> handle(UpdateMedicationStockCommand command) {
         var medication = medicationRepository.findById(command.medicationId())
                 .orElseThrow(() -> new MedicationNotFoundException(command.medicationId()));
+        authenticatedPatientAccessService.requireAccess(command.requestedByUserId(), medication.getPatientId());
         medication.updateStock(command.stockQuantity());
         var updatedMedication = medicationRepository.save(medication);
         if (updatedMedication.isLowStock()) {

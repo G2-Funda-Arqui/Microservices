@@ -4,12 +4,17 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import pe.edu.upc.medibridge.healthmonitoring.application.internal.queryservices.AuthenticatedPatientAccessService;
+import pe.edu.upc.medibridge.healthmonitoring.application.internal.queryservices.PatientHealthSummaryQueryService;
+import pe.edu.upc.medibridge.healthmonitoring.application.internal.queryservices.PremiumAccessService;
 import pe.edu.upc.medibridge.healthmonitoring.domain.model.queries.GetActiveClinicalAlertsByPatientQuery;
 import pe.edu.upc.medibridge.healthmonitoring.domain.model.queries.GetPatientHealthObservationsQuery;
 import pe.edu.upc.medibridge.healthmonitoring.domain.services.ClinicalAlertQueryService;
@@ -35,24 +40,35 @@ public class HealthMonitoringController {
     private final HealthObservationQueryService healthObservationQueryService;
     private final ClinicalAlertQueryService clinicalAlertQueryService;
     private final HealthMonitoringContextFacade healthMonitoringContextFacade;
+    private final PremiumAccessService premiumAccessService;
+    private final AuthenticatedPatientAccessService authenticatedPatientAccessService;
+    private final PatientHealthSummaryQueryService patientHealthSummaryQueryService;
 
     public HealthMonitoringController(
             HealthObservationCommandService healthObservationCommandService,
             HealthObservationQueryService healthObservationQueryService,
             ClinicalAlertQueryService clinicalAlertQueryService,
-            HealthMonitoringContextFacade healthMonitoringContextFacade) {
+            HealthMonitoringContextFacade healthMonitoringContextFacade,
+            PremiumAccessService premiumAccessService,
+            AuthenticatedPatientAccessService authenticatedPatientAccessService,
+            PatientHealthSummaryQueryService patientHealthSummaryQueryService) {
         this.healthObservationCommandService = healthObservationCommandService;
         this.healthObservationQueryService = healthObservationQueryService;
         this.clinicalAlertQueryService = clinicalAlertQueryService;
         this.healthMonitoringContextFacade = healthMonitoringContextFacade;
+        this.premiumAccessService = premiumAccessService;
+        this.authenticatedPatientAccessService = authenticatedPatientAccessService;
+        this.patientHealthSummaryQueryService = patientHealthSummaryQueryService;
     }
 
     @PostMapping(value = "/observations", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<PatientHealthObservationResource> recordHealthObservation(
             @PathVariable Long patientId,
+            @AuthenticationPrincipal Jwt jwt,
             @RequestBody RecordPatientHealthObservationResource resource) {
+        var requestedByUserId = authenticatedPatientAccessService.resolveUserId(jwt);
         var command = RecordPatientHealthObservationCommandFromResourceAssembler
-                .toCommandFromResource(patientId, resource);
+                .toCommandFromResource(patientId, resource, requestedByUserId);
         var observation = healthObservationCommandService.handle(command);
 
         if (observation.isEmpty()) {
@@ -66,8 +82,10 @@ public class HealthMonitoringController {
 
     @GetMapping("/observations")
     public ResponseEntity<List<PatientHealthObservationResource>> getPatientHealthObservations(
-            @PathVariable Long patientId) {
-        var observations = healthObservationQueryService.handle(new GetPatientHealthObservationsQuery(patientId));
+            @PathVariable Long patientId,
+            @AuthenticationPrincipal Jwt jwt) {
+        var requestedByUserId = authenticatedPatientAccessService.resolveUserId(jwt);
+        var observations = healthObservationQueryService.handle(new GetPatientHealthObservationsQuery(patientId, requestedByUserId));
         var resources = observations.stream()
                 .map(PatientHealthObservationResourceFromEntityAssembler::toResourceFromEntity)
                 .toList();
@@ -75,8 +93,12 @@ public class HealthMonitoringController {
     }
 
     @GetMapping("/alerts/active")
-    public ResponseEntity<List<ClinicalAlertResource>> getActiveClinicalAlerts(@PathVariable Long patientId) {
-        var alerts = clinicalAlertQueryService.handle(new GetActiveClinicalAlertsByPatientQuery(patientId));
+    public ResponseEntity<List<ClinicalAlertResource>> getActiveClinicalAlerts(
+            @PathVariable Long patientId,
+            @AuthenticationPrincipal Jwt jwt) {
+        premiumAccessService.requirePaidSubscription(jwt, "advanced clinical alerts");
+        var requestedByUserId = authenticatedPatientAccessService.resolveUserId(jwt);
+        var alerts = clinicalAlertQueryService.handle(new GetActiveClinicalAlertsByPatientQuery(patientId, requestedByUserId));
         var resources = alerts.stream()
                 .map(ClinicalAlertResourceFromEntityAssembler::toResourceFromEntity)
                 .toList();
@@ -84,8 +106,12 @@ public class HealthMonitoringController {
     }
 
     @GetMapping("/summary")
-    public ResponseEntity<PatientHealthSummaryResource> getPatientHealthSummary(@PathVariable Long patientId) {
-        var summary = healthMonitoringContextFacade.fetchPatientClinicalSummaryByPatientId(patientId);
+    public ResponseEntity<PatientHealthSummaryResource> getPatientHealthSummary(
+            @PathVariable Long patientId,
+            @AuthenticationPrincipal Jwt jwt) {
+        premiumAccessService.requirePaidSubscription(jwt, "patient health summaries");
+        var requestedByUserId = authenticatedPatientAccessService.resolveUserId(jwt);
+        var summary = patientHealthSummaryQueryService.getSummary(patientId, requestedByUserId);
         return ResponseEntity.ok(new PatientHealthSummaryResource(patientId, summary));
     }
 }

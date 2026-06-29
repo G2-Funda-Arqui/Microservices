@@ -4,7 +4,7 @@ import pe.edu.upc.medibridge.medicationmanagement.domain.model.commands.Register
 import pe.edu.upc.medibridge.medicationmanagement.interfaces.rest.resources.RegisterMedicationRequest;
 
 public class RegisterMedicationCommandFromResourceAssembler {
-    public static RegisterMedicationCommand toCommandFromResource(RegisterMedicationRequest resource) {
+    public static RegisterMedicationCommand toCommandFromResource(RegisterMedicationRequest resource, Long requestedByUserId) {
         return new RegisterMedicationCommand(
                 resource.patientId(),
                 resource.name(),
@@ -13,6 +13,7 @@ public class RegisterMedicationCommandFromResourceAssembler {
                 resource.administrationRoute(),
                 resource.stockQuantity(),
                 resource.lowStockThreshold(),
-                resource.expirationDate());
+                resource.expirationDate(),
+                requestedByUserId);
     }
 }

@@ -1,5 +1,6 @@
 package pe.edu.upc.medibridge.appointments.infrastructure.messaging.publishers;
 
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 import pe.edu.upc.medibridge.appointments.domain.model.aggregates.Appointment;
@@ -14,6 +15,7 @@ public class AppointmentIntegrationEventPublisher {
         this.rabbitTemplate = rabbitTemplate;
     }
 
+    @CircuitBreaker(name = "rabbitMqPublisher", fallbackMethod = "publishAppointmentScheduledFallback")
     public void publishAppointmentScheduled(Appointment appointment) {
         rabbitTemplate.convertAndSend(
                 RabbitMQConfiguration.EXCHANGE,
@@ -26,5 +28,9 @@ public class AppointmentIntegrationEventPublisher {
                         appointment.getAppointmentType().name(),
                         appointment.getTimeSlot().getStartsAt(),
                         appointment.getTimeSlot().getEndsAt()));
+    }
+
+    private void publishAppointmentScheduledFallback(Appointment appointment, Throwable exception) {
+        throw new IllegalStateException("RabbitMQ appointment scheduled publishing failed", exception);
     }
 }

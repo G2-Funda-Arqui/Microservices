@@ -1,5 +1,6 @@
 package pe.edu.upc.medibridge.communication.infrastructure.acl;
 
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,6 +25,7 @@ public class ProfilesServiceClient {
                 .build();
     }
 
+    @CircuitBreaker(name = "profilesService", fallbackMethod = "getCareTeamUserIdsFallback")
     public List<Long> getCareTeamUserIds(Long patientId) {
         try {
             var resource = restClient.get()
@@ -46,5 +48,10 @@ public class ProfilesServiceClient {
                     exception);
             return List.of();
         }
+    }
+
+    private List<Long> getCareTeamUserIdsFallback(Long patientId, Throwable exception) {
+        LOGGER.warn("Profiles circuit breaker fallback while resolving care team user ids for patientId={}", patientId, exception);
+        return List.of();
     }
 }

@@ -11,13 +11,18 @@ import java.util.List;
 @Service
 public class MedicationScheduleQueryServiceImpl implements MedicationScheduleQueryService {
     private final MedicationScheduleRepository medicationScheduleRepository;
+    private final AuthenticatedPatientAccessService authenticatedPatientAccessService;
 
-    public MedicationScheduleQueryServiceImpl(MedicationScheduleRepository medicationScheduleRepository) {
+    public MedicationScheduleQueryServiceImpl(
+            MedicationScheduleRepository medicationScheduleRepository,
+            AuthenticatedPatientAccessService authenticatedPatientAccessService) {
         this.medicationScheduleRepository = medicationScheduleRepository;
+        this.authenticatedPatientAccessService = authenticatedPatientAccessService;
     }
 
     @Override
     public List<MedicationSchedule> handle(GetActiveMedicationSchedulesQuery query) {
+        authenticatedPatientAccessService.requireAccess(query.requestedByUserId(), query.patientId());
         return medicationScheduleRepository.findByPatientIdAndActiveTrue(query.patientId());
     }
 }

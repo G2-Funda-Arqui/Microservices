@@ -3,6 +3,7 @@ package pe.edu.upc.medibridge.healthmonitoring.application.internal.commandservi
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import pe.edu.upc.medibridge.healthmonitoring.application.internal.outboundservices.acl.ExternalProfilesContextService;
+import pe.edu.upc.medibridge.healthmonitoring.application.internal.queryservices.AuthenticatedPatientAccessService;
 import pe.edu.upc.medibridge.healthmonitoring.domain.model.aggregates.ClinicalAlert;
 import pe.edu.upc.medibridge.healthmonitoring.domain.model.aggregates.PatientHealthObservation;
 import pe.edu.upc.medibridge.healthmonitoring.domain.model.commands.RecordPatientHealthObservationCommand;
@@ -35,24 +36,28 @@ public class HealthObservationCommandServiceImpl implements HealthObservationCom
     private final ExternalProfilesContextService externalProfilesContextService;
     private final ApplicationEventPublisher eventPublisher;
     private final HealthMonitoringIntegrationEventPublisher integrationEventPublisher;
+    private final AuthenticatedPatientAccessService authenticatedPatientAccessService;
 
     public HealthObservationCommandServiceImpl(
             PatientHealthObservationRepository patientHealthObservationRepository,
             ClinicalAlertRepository clinicalAlertRepository,
             ExternalProfilesContextService externalProfilesContextService,
             ApplicationEventPublisher eventPublisher,
-            HealthMonitoringIntegrationEventPublisher integrationEventPublisher) {
+            HealthMonitoringIntegrationEventPublisher integrationEventPublisher,
+            AuthenticatedPatientAccessService authenticatedPatientAccessService) {
         this.patientHealthObservationRepository = patientHealthObservationRepository;
         this.clinicalAlertRepository = clinicalAlertRepository;
         this.externalProfilesContextService = externalProfilesContextService;
         this.eventPublisher = eventPublisher;
         this.integrationEventPublisher = integrationEventPublisher;
+        this.authenticatedPatientAccessService = authenticatedPatientAccessService;
     }
 
     @Override
     public Optional<PatientHealthObservation> handle(RecordPatientHealthObservationCommand command) {
         validateCommand(command);
         validateProfileReferences(command.patientId(), command.recordedByDoctorProfileId());
+        authenticatedPatientAccessService.requireAccess(command.requestedByUserId(), command.patientId());
 
         var observation = patientHealthObservationRepository.save(new PatientHealthObservation(command));
         eventPublisher.publishEvent(new PatientHealthObservationRecordedEvent(

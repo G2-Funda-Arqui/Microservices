@@ -1,7 +1,10 @@
 package pe.edu.upc.medibridge.reportsanalytics.application.internal.outboundservices.acl;
 
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.springframework.stereotype.Service;
 import pe.edu.upc.medibridge.reportsanalytics.infrastructure.acl.HealthMonitoringServiceClient;
+
+import java.time.LocalDate;
 
 @Service
 public class HealthMonitoringExternalService implements ExternalHealthMonitoringService {
@@ -12,7 +15,12 @@ public class HealthMonitoringExternalService implements ExternalHealthMonitoring
     }
 
     @Override
-    public String getPatientClinicalSummary(Long patientId) {
-        return healthMonitoringServiceClient.getPatientHealthSummary(patientId);
+    @CircuitBreaker(name = "healthMonitoringService", fallbackMethod = "getPatientClinicalSummaryFallback")
+    public String getPatientClinicalSummary(Long patientId, LocalDate startDate, LocalDate endDate) {
+        return healthMonitoringServiceClient.getPatientHealthSummary(patientId, startDate, endDate);
+    }
+
+    private String getPatientClinicalSummaryFallback(Long patientId, LocalDate startDate, LocalDate endDate, Throwable exception) {
+        return "Health monitoring summary is temporarily unavailable.";
     }
 }

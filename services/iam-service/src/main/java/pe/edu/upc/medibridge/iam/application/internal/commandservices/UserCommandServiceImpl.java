@@ -2,12 +2,15 @@ package pe.edu.upc.medibridge.iam.application.internal.commandservices;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import pe.edu.upc.medibridge.iam.domain.model.aggregates.User;
 import pe.edu.upc.medibridge.iam.domain.model.commands.SignInCommand;
 import pe.edu.upc.medibridge.iam.domain.model.commands.SignUpCommand;
 import pe.edu.upc.medibridge.iam.domain.model.entities.Role;
 import pe.edu.upc.medibridge.iam.domain.model.exceptions.InvalidCredentialsException;
+import pe.edu.upc.medibridge.iam.domain.model.exceptions.RoleNotFoundException;
 import pe.edu.upc.medibridge.iam.domain.model.exceptions.UserNotFoundException;
+import pe.edu.upc.medibridge.iam.domain.model.exceptions.UsernameAlreadyExistsException;
 import pe.edu.upc.medibridge.iam.domain.model.valueobjects.Roles;
 import pe.edu.upc.medibridge.iam.domain.services.HashingService;
 import pe.edu.upc.medibridge.iam.domain.services.TokenService;
@@ -55,20 +58,21 @@ public class UserCommandServiceImpl implements UserCommandService {
     }
 
     @Override
+    @Transactional
     public Optional<User> handle(SignUpCommand command) {
         if (userRepository.existsByUsername(command.username()))
-            throw new RuntimeException("Username already exists");
+            throw new UsernameAlreadyExistsException(command.username());
 
         Set<Role> rolesToAssign = new HashSet<>();
         if (command.roles() != null && !command.roles().isEmpty()) {
             for (var roleVO : command.roles()) {
                 var roleEntity = roleRepository.findByName(roleVO.getName())
-                        .orElseThrow(() -> new RuntimeException("Role not found: " + roleVO.getName()));
+                        .orElseThrow(() -> new RoleNotFoundException(roleVO.getName().name()));
                 rolesToAssign.add(roleEntity);
             }
         } else {
             var defaultRole = roleRepository.findByName(Roles.valueOf("ROLE_USER"))
-                    .orElseThrow(() -> new RuntimeException("Default role ROLE_USER not found"));
+                    .orElseThrow(() -> new RoleNotFoundException("ROLE_USER"));
             rolesToAssign.add(defaultRole);
         }
 

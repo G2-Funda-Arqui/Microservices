@@ -16,18 +16,24 @@ public class ClinicalAlertQueryServiceImpl implements ClinicalAlertQueryService 
 
     private final ClinicalAlertRepository clinicalAlertRepository;
     private final ExternalProfilesContextService externalProfilesContextService;
+    private final AuthenticatedPatientAccessService authenticatedPatientAccessService;
 
     public ClinicalAlertQueryServiceImpl(
             ClinicalAlertRepository clinicalAlertRepository,
-            ExternalProfilesContextService externalProfilesContextService) {
+            ExternalProfilesContextService externalProfilesContextService,
+            AuthenticatedPatientAccessService authenticatedPatientAccessService) {
         this.clinicalAlertRepository = clinicalAlertRepository;
         this.externalProfilesContextService = externalProfilesContextService;
+        this.authenticatedPatientAccessService = authenticatedPatientAccessService;
     }
 
     @Override
     public List<ClinicalAlert> handle(GetActiveClinicalAlertsByPatientQuery query) {
         if (!externalProfilesContextService.patientExists(query.patientId())) {
             throw new InvalidPatientReferenceException(query.patientId());
+        }
+        if (query.requestedByUserId() != null) {
+            authenticatedPatientAccessService.requireAccess(query.requestedByUserId(), query.patientId());
         }
         return clinicalAlertRepository.findByPatientIdAndStatusOrderByTriggeredAtDesc(
                 query.patientId(),

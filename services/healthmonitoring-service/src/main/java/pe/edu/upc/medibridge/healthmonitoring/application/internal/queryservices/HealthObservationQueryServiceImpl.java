@@ -15,18 +15,24 @@ public class HealthObservationQueryServiceImpl implements HealthObservationQuery
 
     private final PatientHealthObservationRepository patientHealthObservationRepository;
     private final ExternalProfilesContextService externalProfilesContextService;
+    private final AuthenticatedPatientAccessService authenticatedPatientAccessService;
 
     public HealthObservationQueryServiceImpl(
             PatientHealthObservationRepository patientHealthObservationRepository,
-            ExternalProfilesContextService externalProfilesContextService) {
+            ExternalProfilesContextService externalProfilesContextService,
+            AuthenticatedPatientAccessService authenticatedPatientAccessService) {
         this.patientHealthObservationRepository = patientHealthObservationRepository;
         this.externalProfilesContextService = externalProfilesContextService;
+        this.authenticatedPatientAccessService = authenticatedPatientAccessService;
     }
 
     @Override
     public List<PatientHealthObservation> handle(GetPatientHealthObservationsQuery query) {
         if (!externalProfilesContextService.patientExists(query.patientId())) {
             throw new InvalidPatientReferenceException(query.patientId());
+        }
+        if (query.requestedByUserId() != null) {
+            authenticatedPatientAccessService.requireAccess(query.requestedByUserId(), query.patientId());
         }
         return patientHealthObservationRepository.findByPatientIdOrderByRecordedAtDesc(query.patientId());
     }
